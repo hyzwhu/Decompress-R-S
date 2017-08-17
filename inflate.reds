@@ -186,10 +186,12 @@ build-tree: func [
     sum [integer!]
     j [integer!]
     l [integer!]
+    k [integer!]
 
 ][
+    print-line ["welcome to build tree"]
     offs: as int-ptr! allocate 70
-    
+    print-line "welcome to build tree111111111"
     ;--clear code length count table--
     i: 1
     until [
@@ -197,17 +199,26 @@ build-tree: func [
         i: i + 1
         i = 17
     ]
-
+    print-line "build tree work 2222222222222"
     ;--scan symbole lengths, and sum code length counts--
     i: 1
     until[
-        j: lengths/i
+        j: lengths/i + 1
+        ;print-line ["the t/table/j's value is:"t/table/j]
+        ;print-line ["the lengths/i 's value is:"lengths/i]
         t/table/j: t/table/j + 1
         i: i + 1
         i = (num + 1)
     ]
-
-    t/table/0: 0
+    print-line "build tree work 2"
+    t/table/1: 0
+    
+    i: 1
+    until[
+        print-line ["the t/table/i 's value is "t/table/i]
+        i: i + 1
+        i = (num + 1)
+    ]
 
     ;--compute offset table for distribution sort--
     i: 1
@@ -215,23 +226,36 @@ build-tree: func [
     until[
         offs/i: sum
         sum: sum + t/table/i
+        print-line ["the sum's value is:"sum]
         i: i + 1
         i = 17
     ]
+    ;--test--
+    
 
     ;--create code->symbol translation table (symbol sorted) 
     i: 1
     until[
         j: lengths/i
-        l: offs/j
+        k: j + 1
+        l: offs/k
         if j > 0 [
+            print-line ["the lengths/i's value is:"j]
             l: l + 1
             t/trans/l: i - 1
-
+            offs/k: offs/k + 1
+           
         ]
         i: i + 1
         i = (num + 1)
 
+    ]
+    ;--test--
+    i: 1
+    until[
+        print-line ["the t/trans/i's value is:"t/trans/i]
+        i: i + 1
+        i = 20
     ]
 ]
 
@@ -254,11 +278,11 @@ build-tree: func [
         d/bitcount: d/bitcount - 1
         if d/bitcount = 0 [
             ;--load next tag--
-            print-line "load next tag"
+          ;  print-line "load next tag"
             d/source1: d/source1 + 1 ;1
             d/tag: d/source1/value
             d/bitcount: 8   ;7
-            print-line ["in the if , the d/bitcount value is:"d/bitcount]
+          ;  print-line ["in the if , the d/bitcount value is:"d/bitcount]
         ]
         
         ; print-line ["d/bitcount is :"d/bitcount]
@@ -267,7 +291,7 @@ build-tree: func [
         j: d/tag
         ;print-line ["before shift d/tag is:"d/tag]
         d/tag: d/tag >> 1
-        print-line ["after shift d/tag is:"d/tag]
+       ; print-line ["after shift d/tag is:"d/tag]
         j and 00000001
       
         
@@ -284,18 +308,18 @@ build-tree: func [
         val [integer!]
         limit [integer!]
         mask [integer!]
-    ][  print-line "read-bits begin---------------------------------------"
+    ][ ;print-line "read-bits begin---------------------------------------"
         val: 0
-       print-line ["num is:" num]
-       print-line ["base is:"base]
+      ; print-line ["num is:" num]
+       ;print-line ["base is:"base]
     ;--read num bits--
     if num <> 0 [ 
         limit: 1 << num
-        print-line ["limit is" limit]
+       ; print-line ["limit is" limit]
         mask: 1
         until[
             i: getbit d
-            print-line ["i:"i]
+           ; print-line ["i:"i]
             if i <> 0 [
                 val: val + mask
             ]
@@ -378,17 +402,20 @@ build-tree: func [
 
        l [integer!]
 
-    ][
+    ][  
+        init-TREE code-tree
+
         lengths: as int-ptr! allocate 1400
         ;--get 5 bits HLIT (257-286)--
         hlit: read-bits d 5 257
+        print-line ["the hlit's value is:"hlit]
 
         ;--get 5 bits HDIST (1-32)
         hdist: read-bits d 5 1
-
+        print-line ["the hdist's value is:"hdist]
         ;--get 4 bits HCLEN (4-19)--
         hclen: read-bits d 4 4
-
+        print-line ["the hclen's value is:"hclen]
         i: 1
         until [
             lengths/i: 0
@@ -401,35 +428,48 @@ build-tree: func [
         until [
             ;--get 3 bits code length (0-7)--
             clen: read-bits d 3 0
-            j: clcidx/i
+            j: clcidx/i + 1
             lengths/j: clen
+            ;print-line ["the lengths/j's value is :"lengths/j]
             i: i + 1
             i = (hclen + 1)
 
         ]
-
+        ;--test--
+        i: 1
+        until [
+            ; print-line ["the lengths/j's value is :"lengths/i]
+             i: i + 1
+             i = 20
+        ]
+         
+        ;--test--
+        print-line "the first time use the build-tree function"
         ;--build code length tree--
         build-tree code-tree lengths 19
+
+        print-line "we have finished the first work~~~~~~~~~~`"
 
         ;--decode code lengths for the dynamic trees--
         num: 0
         until [
             sym: decode-symbol d code-tree
-
+            print-line ["the sym's value is!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!:"sym]
             switch sym[
                 16 [
                     ;--copy previous code length 3-6 times (read 2 bits)--
-                    j: num - 1
+                    j: num - 1 + 1
                     prev: lengths/j
                     length: read-bits d 2 3
                     until [
                         l: num + 1
                         lengths/l: prev
+                        num: num + 1
                         length: length - 1
                         length = 0
                         
                     ]
-                    break
+                    
                 ]
                 
 
@@ -439,40 +479,49 @@ build-tree: func [
                     until [
                         l: num + 1
                         lengths/l: 0
+                        num: num + 1
                         length: length - 1
                         length = 0
                         ]
-                        break
+                        
                     ]
                 
 
                 18 [
                     ;--repeat code length 0 for 11-138 times (read 7 bits)--
                     length: read-bits d 7 11
+                    print-line ["the length's value is:"length]
                      until [
+                       print-line ["the num's value is:"num]
                         l: num + 1
                         lengths/l: 0
+                        num: num + 1
                         length: length - 1
                         length = 0
                         ]
-                        break
+                       
                     ]
                 
 
                 default [
                     l: num + 1
                     lengths/l: sym
-                    break
+                    num: num + 1
+                    
                 ]
                 
 
                 ]
+                print-line [" finish the first decompress"]
             num >= (hlit + hdist)
         ]
-
+        
+        print-line "we will build dynamic trees~~~~~~~~~~~~~~~~~~~~~~"
         ;--build dynamic trees--
         build-tree lt lengths hlit
+        print-line "we have finished the first dynamic trees!!!!!!!"
         build-tree dt (lengths + hlit) hdist
+        print-line "we have finished building dynamic trees~~~~~~~`"
 
     ]
 
@@ -501,47 +550,47 @@ build-tree: func [
     ][
         ;start: as int-ptr! allocate 2000
         ;--remember current output position--
-        print-line "start inflate-block-data"
-        print-line d/bitcount
+        ;print-line "start inflate-block-data"
+        ;print-line d/bitcount
         start: d/dest
         l: 1
         until [
             sym: decode-symbol d lt
-            print-line ["the symbol's value is:"sym]
+            ;print-line ["the symbol's value is:"sym]
             ;--check for end of block
 
             if sym = 256 [
                 d/destLen/value: d/destLen/value + (d/dest - start)
-                print-line "in the sym=256 's work 00000000000000000"
+                ;print-line "in the sym=256 's work 00000000000000000"
                 break
             ]
 
             if sym < 256 [
                 d/dest/value: sym
                 d/dest: d/dest + 1
-                print-line ["the sym's value is: "sym]
-                print-line "in the sym<256 's work hhhhhhhhhhhhhhhh"
+               ; print-line ["the sym's value is: "sym]
+                ;print-line "in the sym<256 's work hhhhhhhhhhhhhhhh"
             ]
 
             if sym > 256 [
                 sym: sym - 257  ;256 or 257
                 k: sym + 1
                 ;--possibly get more bits from length code--
-                print-line "begin to get length'value"
-                print-line ["the length-base/1'value is:"length-base/1 ]
-                print-line [length-base/k]
+               ; print-line "begin to get length'value"
+               ; print-line ["the length-base/1'value is:"length-base/1 ]
+               ; print-line [length-base/k]
                 length: read-bits d length-bits/k length-base/k
-                print-line ["length'value is:"length]
-                print-line "begin to get dist's value~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+               ; print-line ["length'value is:"length]
+              ;  print-line "begin to get dist's value~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
                 dist: decode-symbol d dt
-                print-line ["dist's value is:" dist]
-                print-line "begin to get offs' value~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+               ; print-line ["dist's value is:" dist]
+                ;print-line "begin to get offs' value~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
                 ;--possibly get more bits from distance code--
                 k: dist + 1
-                print-line ["the dist-bits/k ' value is!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!:"dist-bits/k]
-                print-line ["the dist-base/k' value is:"dist-base/k]
+               ; print-line ["the dist-bits/k ' value is!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!:"dist-bits/k]
+               ; print-line ["the dist-base/k' value is:"dist-base/k]
                 offs: read-bits d dist-bits/k dist-base/k
-                print-line ["the offs' value is------------------------------------------------:" offs]
+               ; print-line ["the offs' value is------------------------------------------------:" offs]
 
                 ;--copy match--
                 i: 1
@@ -553,7 +602,7 @@ build-tree: func [
                 ]
                 
                 d/dest: d/dest + length
-                print-line "finished the 257 work~!!!!!!!!!!!!!!!!!!!1"
+                ;print-line "finished the 257 work~!!!!!!!!!!!!!!!!!!!1"
 
             ]
             l < 0
@@ -617,7 +666,8 @@ build-tree: func [
     inflata-dynamic-block: func [
         d [DATA! ]
         ;return [integer]
-    ][
+    ][  init-TREE d/ltree
+        init-TREE d/dtree
         ;--decode trees from stream--
         decode-trees d d/ltree d/dtree
 
@@ -731,7 +781,7 @@ build-tree: func [
 ]
 ;--compress data
 res: declare integer!
-src: "abc123xyz123abcgfdgdgdfgdgdffffffffffffffffffffffffgfddhdfhdhdfjdjgdhdhdgfdxvcxvfdadfewfwegdsfasfdsgregfdgregadafds"
+src: "today i am so happy, why? because i have finished the work. and tomorrow i will continue to gank the next task"
 dst: as byte-ptr! allocate 1000000
 dstLen: 1024
 srcLen: declare integer!
