@@ -189,9 +189,9 @@ build-tree: func [
     k [integer!]
 
 ][
-    print-line ["welcome to build tree"]
+   ; print-line ["welcome to build tree"]
     offs: as int-ptr! allocate 70
-    print-line "welcome to build tree111111111"
+   ; print-line "welcome to build tree111111111"
     ;--clear code length count table--
     i: 1
     until [
@@ -199,7 +199,7 @@ build-tree: func [
         i: i + 1
         i = 17
     ]
-    print-line "build tree work 2222222222222"
+   ; print-line "build tree work 2222222222222"
     ;--scan symbole lengths, and sum code length counts--
     i: 1
     until[
@@ -210,15 +210,15 @@ build-tree: func [
         i: i + 1
         i = (num + 1)
     ]
-    print-line "build tree work 2"
+   ; print-line "build tree work 2"
     t/table/1: 0
     
-    i: 1
-    until[
-        print-line ["the t/table/i 's value is "t/table/i]
-        i: i + 1
-        i = (num + 1)
-    ]
+    ; i: 1
+    ; until[
+    ;     print-line ["the t/table/i 's value is "t/table/i]
+    ;     i: i + 1
+    ;     i = (num + 1)
+    ; ]
 
     ;--compute offset table for distribution sort--
     i: 1
@@ -226,7 +226,7 @@ build-tree: func [
     until[
         offs/i: sum
         sum: sum + t/table/i
-        print-line ["the sum's value is:"sum]
+       ; print-line ["the sum's value is:"sum]
         i: i + 1
         i = 17
     ]
@@ -240,7 +240,7 @@ build-tree: func [
         k: j + 1
         l: offs/k
         if j > 0 [
-            print-line ["the lengths/i's value is:"j]
+           ; print-line ["the lengths/i's value is:"j]
             l: l + 1
             t/trans/l: i - 1
             offs/k: offs/k + 1
@@ -253,7 +253,7 @@ build-tree: func [
     ;--test--
     i: 1
     until[
-        print-line ["the t/trans/i's value is:"t/trans/i]
+       ; print-line ["the t/trans/i's value is:"t/trans/i]
         i: i + 1
         i = 20
     ]
@@ -347,7 +347,7 @@ build-tree: func [
          l [integer!]
          
 
-    ][  print-line "welcome to the decode-symbol"
+    ][ ; print-line "welcome to the decode-symbol"
         sum: 0
         cur: 0
         len: 1
@@ -408,14 +408,14 @@ build-tree: func [
         lengths: as int-ptr! allocate 1400
         ;--get 5 bits HLIT (257-286)--
         hlit: read-bits d 5 257
-        print-line ["the hlit's value is:"hlit]
+        ;print-line ["the hlit's value is:"hlit]
 
         ;--get 5 bits HDIST (1-32)
         hdist: read-bits d 5 1
-        print-line ["the hdist's value is:"hdist]
+       ; print-line ["the hdist's value is:"hdist]
         ;--get 4 bits HCLEN (4-19)--
         hclen: read-bits d 4 4
-        print-line ["the hclen's value is:"hclen]
+       ; print-line ["the hclen's value is:"hclen]
         i: 1
         until [
             lengths/i: 0
@@ -444,17 +444,17 @@ build-tree: func [
         ]
          
         ;--test--
-        print-line "the first time use the build-tree function"
+        ;print-line "the first time use the build-tree function"
         ;--build code length tree--
         build-tree code-tree lengths 19
 
-        print-line "we have finished the first work~~~~~~~~~~`"
+       ; print-line "we have finished the first work~~~~~~~~~~`"
 
         ;--decode code lengths for the dynamic trees--
         num: 0
         until [
             sym: decode-symbol d code-tree
-            print-line ["the sym's value is!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!:"sym]
+          ;  print-line ["the sym's value is!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!:"sym]
             switch sym[
                 16 [
                     ;--copy previous code length 3-6 times (read 2 bits)--
@@ -490,9 +490,9 @@ build-tree: func [
                 18 [
                     ;--repeat code length 0 for 11-138 times (read 7 bits)--
                     length: read-bits d 7 11
-                    print-line ["the length's value is:"length]
+                   ; print-line ["the length's value is:"length]
                      until [
-                       print-line ["the num's value is:"num]
+                      ; print-line ["the num's value is:"num]
                         l: num + 1
                         lengths/l: 0
                         num: num + 1
@@ -512,16 +512,16 @@ build-tree: func [
                 
 
                 ]
-                print-line [" finish the first decompress"]
+               ; print-line [" finish the first decompress"]
             num >= (hlit + hdist)
         ]
         
-        print-line "we will build dynamic trees~~~~~~~~~~~~~~~~~~~~~~"
+       ; print-line "we will build dynamic trees~~~~~~~~~~~~~~~~~~~~~~"
         ;--build dynamic trees--
         build-tree lt lengths hlit
-        print-line "we have finished the first dynamic trees!!!!!!!"
+       ; print-line "we have finished the first dynamic trees!!!!!!!"
         build-tree dt (lengths + hlit) hdist
-        print-line "we have finished building dynamic trees~~~~~~~`"
+       ; print-line "we have finished building dynamic trees~~~~~~~`"
 
     ]
 
@@ -682,13 +682,13 @@ build-tree: func [
     ;--initialize global (static) data--
     init: func [][
         ;--build fixed huffman trees--
-        print-line "build-fixed-trees  begin"
+       ; print-line "build-fixed-trees  begin"
         build-fixed-trees sltree sdtree
-        print-line "build fixed trees"
+       ; print-line "build fixed trees"
         ;--build extra bits and base tables--
         build-bits-base length-bits length-base 4 3 
         build-bits-base dist-bits dist-base 2 1
-        print-line "build extra bits/base tables"
+       ; print-line "build extra bits/base tables"
         
         ;--fix a special carse--
         length-bits/29: 0
@@ -720,15 +720,15 @@ build-tree: func [
         destLen/value: 0
 
         until [
-            print-line "begin to decompress"
+           ; print-line "begin to decompress"
             ;--read final block flag--
             bfinal: getbit d
-            print-line ["bifnal value is :"bfinal]
+           ; print-line ["bifnal value is :"bfinal]
             ;--read block type (2 bits)--
             ;print-line ["outside the d/bitcount value is:"d/bitcount]
             ;print-line ["outside the d/tag value is:"d/tag]
             btype: read-bits d 2 0
-            print-line ["block type is~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`:" btype]
+           ; print-line ["block type is~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`:" btype]
 
             switch btype [
                 0 [
@@ -781,15 +781,15 @@ build-tree: func [
 ]
 ;--compress data
 res: declare integer!
-src: "today i am so happy, why? because i have finished the work. and tomorrow i will continue to gank the next task"
+src: "tomorrow, i will learn more konwledge than yestoday,eventhough there are many hard cores"
 dst: as byte-ptr! allocate 1000000
 dstLen: 1024
 srcLen: declare integer!
 srcLen: length? src
-print-line [srcLen]
+;print-line [srcLen]
 res: compress dst :dstLen src srcLen
 print-line ["return :" res ]
-print-line dstLen
+;print-line dstLen
 i: 1
 j: 0
 until[
@@ -800,27 +800,27 @@ i = (dstLen + 1)
 ]
 
 ;--decompress dataq
-print-line "1"
+;print-line "1"
 srcLen: dstLen
 src1: as int-ptr! allocate 100000
 i: 1
 until [
     src1/i: as integer! dst/i
-   print-line ["the src code is:" src1/i]
+  ; print-line ["the src code is:" src1/i]
     i: i + 1
     i = (srcLen + 1)
 ]
-print-line "2"
+;print-line "2"
 ;src: as byte-ptr! dst
 dst1: as int-ptr! allocate 100000
 c: declare byte!
 dstLen1: 1024
-print-line "3"
+;print-line "3"
 init
 src1: src1 + 1
 srcLen: srcLen - 6
-print-line "4"
-print-line "uncompress begin"
+;print-line "4"
+;print-line "uncompress begin"
 uncompress dst1 :dstLen1 src1 srcLen
 i: 1
 until [
