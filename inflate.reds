@@ -6,16 +6,16 @@ TREE!: alias struct! [
 init-TREE: func [
     a [TREE!]
 ][
-    a/table: as int-ptr! allocate 70
+    a/table: as int-ptr! allocate 16 * size? integer!
     a/trans: as int-ptr! allocate 1100
 ]
 
 DATA!: alias struct! [
-    source [int-ptr!]   ;byte->int pointer
+    source [byte-ptr!]   ;byte->int pointer
     tag [integer!]
     bitcount [integer!]
 
-    dest [int-ptr!]       ;byte->int pointer
+    dest [byte-ptr!]       ;byte->int pointer
     destLen [int-ptr!]
 
    
@@ -280,7 +280,7 @@ build-tree: func [
             ;--load next tag--
           ;  print-line "load next tag"
             d/source: d/source + 1 ;1
-            d/tag: d/source/value
+            d/tag: as integer! d/source/value
             d/bitcount: 8   ;7
           ;  print-line ["in the if , the d/bitcount value is:"d/bitcount]
         ]
@@ -536,7 +536,7 @@ build-tree: func [
         dt [TREE! ]
         return: [integer!]
         /local
-        start [int-ptr! ]
+        start [byte-ptr! ]
         sym [integer!]
 
         length [integer!]
@@ -566,7 +566,7 @@ build-tree: func [
             ]
 
             if sym < 256 [
-                d/dest/value: sym
+                d/dest/value: as byte! sym
                 d/dest: d/dest + 1
                ; print-line ["the sym's value is: "sym]
                 ;print-line "in the sym<256 's work hhhhhhhhhhhhhhhh"
@@ -622,15 +622,15 @@ build-tree: func [
         invlength [integer!]
         i [integer!]
 
-        j [int-ptr!]
-        l [int-ptr!]
+        j [byte-ptr!]
+        l [byte-ptr!]
     ][
         ;--get length--
-        length: d/source/2  ; c's d->source[1]
+        length: as integer! d/source/2  ; c's d->source[1]
         length: 256 * length + d/source/1
 
         ;--get one's complement of length--
-        invlength: d/source/4 ;c's d->source[3]
+        invlength: as integer! d/source/4 ;c's d->source[3]
         invlength: 256 * invlength + d/source/3
 
         ;--check length--
@@ -698,9 +698,9 @@ build-tree: func [
 
     ;--inflate stream from source to dest--
     uncompress: func [
-        dest [int-ptr!]  ;c's void * dest
+        dest [byte-ptr!]  ;c's void * dest
         destLen [int-ptr!]
-        source [int-ptr!]
+        source [byte-ptr!]
         sourceLen [integer!]
 
         /local
@@ -790,29 +790,29 @@ srcLen: length? src
 res: compress dst :dstLen src srcLen
 print-line ["return :" res ]
 ;print-line dstLen
-i: 1
+
 j: 0
-until[
-j: as integer! dst/i
-;print-line ["return code:" j ]
-i: i + 1
-i = (dstLen + 1)
-]
+; until[
+; j: as integer! dst/i
+; ;print-line ["return code:" j ]
+; i: i + 1
+; i = (dstLen + 1)
+; ]
 
 ;--decompress dataq
 ;print-line "1"
 srcLen: dstLen
-src1: as int-ptr! allocate 100000
+src1: as byte-ptr! allocate 100000
 i: 1
 until [
-    src1/i: as integer! dst/i
+    src1/i: dst/i
   ; print-line ["the src code is:" src1/i]
     i: i + 1
     i = (srcLen + 1)
 ]
 ;print-line "2"
 ;src: as byte-ptr! dst
-dst1: as int-ptr! allocate 100000
+dst1: as byte-ptr! allocate 100000
 c: declare byte!
 dstLen1: 1024
 ;print-line "3"
