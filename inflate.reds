@@ -11,7 +11,7 @@ init-TREE: func [
 ]
 
 DATA!: alias struct! [
-    source [int-ptr!]   ;byte->int pointer
+    source1 [int-ptr!]   ;byte->int pointer
     tag [integer!]
     bitcount [integer!]
 
@@ -279,8 +279,8 @@ build-tree: func [
         if d/bitcount = 0 [
             ;--load next tag--
           ;  print-line "load next tag"
-            d/source: d/source + 1 ;1
-            d/tag: d/source/value
+            d/source1: d/source1 + 1 ;1
+            d/tag: d/source1/value
             d/bitcount: 8   ;7
           ;  print-line ["in the if , the d/bitcount value is:"d/bitcount]
         ]
@@ -626,22 +626,22 @@ build-tree: func [
         l [int-ptr!]
     ][
         ;--get length--
-        length: d/source/2  ; c's d->source[1]
-        length: 256 * length + d/source/1
+        length: d/source1/2  ; c's d->source[1]
+        length: 256 * length + d/source1/1
 
         ;--get one's complement of length--
-        invlength: d/source/4 ;c's d->source[3]
-        invlength: 256 * invlength + d/source/3
+        invlength: d/source1/4 ;c's d->source[3]
+        invlength: 256 * invlength + d/source1/3
 
         ;--check length--
         
-        d/source: d/source + 4
+        d/source1: d/source1 + 4
 
         ;--copy block--
         i: length
         until [
             j: d/dest + 1
-            l: d/source + 1
+            l: d/source1 + 1
             j: l
             i: i - 1
             i = 0
@@ -700,7 +700,7 @@ build-tree: func [
     uncompress: func [
         dest [int-ptr!]  ;c's void * dest
         destLen [int-ptr!]
-        source [int-ptr!]
+        source1 [int-ptr!]
         sourceLen [integer!]
 
         /local
@@ -711,7 +711,7 @@ build-tree: func [
         res [integer!]
     ][
         ;--initialise data--
-        d/source: source
+        d/source1: source1
         d/bitcount: 1
 
         d/dest: dest
