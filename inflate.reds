@@ -11,18 +11,13 @@ init-TREE: func [
 ]
 
 DATA!: alias struct! [
-	source [byte-ptr!]   
-	tag [integer!]
-	bitcount [integer!]
-
-	dest [byte-ptr!]       
-	destLen [int-ptr!]
-
-   
-	ltree [TREE! value]
-	dtree [TREE! value]
-	
-	
+	source 		[byte-ptr!]   
+	tag 		[integer!]
+	bitcount	[integer!]
+	dest 		[byte-ptr!]       
+	destLen 	[int-ptr!]
+	ltree 		[TREE! value]
+	dtree 		[TREE! value]	
 ]
 
 sltree: declare TREE!
@@ -39,197 +34,195 @@ dist-base: as int-ptr! allocate 30 * size? integer!
 ;--special ordring of code length  code
 clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 
-;--build extra bits and base tables
-build-bits-base: func[
-	bits [int-ptr!]  
-	base [int-ptr!]
-	delta [integer!]
-	first [integer!]
-
-	/local
-	i [integer!]
-	sum [integer!]
-	j [integer!]
-][
-	;--build bits table
-	i: 1
-	until[
-		bits/i: 0 
-		i: i + 1
-		i = (delta + 1)
-	]
-
-	i: 1   
-	until[
-		j: i + delta 
-		bits/j: i - 1 / delta
-		i: i + 1
-		i = (31 - delta)
-	]
-
-	;--build base table 
-	sum: first
-	i: 1
-	until[
-		base/i: sum
-		sum: sum + (1 << (bits/i))
-		i: i + 1
-		i = 31      
-	]
-
-	
-]
-
-;--build the fixed huffman trees
-build-fixed-trees: function [
-	lt [TREE! ]
-	dt [TREE! ]
-
-	/local 
-	i [integer!]
-	j [integer!]
-
-][
-	;--build fixed length tree
-	init-TREE lt
-	init-TREE dt
-	i: 1
-	until[
-		lt/table/i: 0
-		i: i + 1
-		i = 8
-	]
-	lt/table/8: 24
-	lt/table/9: 152
-	lt/table/10: 112
-	i: 1
-	until [
-		lt/trans/i: 256 + i - 1
-		i: i + 1
-		i = 25
-
-	]
-	  i: 1
-	until [
-		j: i + 24
-		lt/trans/j: i - 1
-		i: i + 1
-		i = 145
-
-	]
-	i: 1
-	until [
-		j: 168 + i
-		lt/trans/j: 280 + i - 1
-		i: i + 1
-		i = 9
-	]
-
-	i: 1
-	until [
-		j: 176 + i
-		lt/trans/j: 144 + i - 1
-		i: i + 1
-		i = 113
-	]
-
-	;--build fixed distance tree
-	i: 1
-	until[
-		dt/table/i: 0
-		i: i + 1
-		i = 6
-	]
-
-	dt/table/6: 32
-
-	i: 1
-	until[
-		dt/trans/i: i - 1
-		i: i + 1
-		i = 33
-	]
-	
-
-	
-]
-
-;--given an array of code length,build a tree
-build-tree: func [
-	t [TREE! ]
-	lengths [int-ptr!]  
-	num [integer!]
-	/local
-	offs [int-ptr!]
-	i [integer!]
-	sum [integer!]
-	j [integer!]
-	l [integer!]
-	k [integer!]
-
-][
-	offs: as int-ptr! allocate 70
-	;--clear code length count table
-	i: 1
-	until [
-		t/table/i: 0
-		i: i + 1
-		i = 17
-	]
-
-	;--scan symbole lengths, and sum code length counts
-	i: 1
-	until[
-		j: lengths/i + 1
-		t/table/j: t/table/j + 1
-		i: i + 1
-		i = (num + 1)
-	]
-	t/table/1: 0
-
-	;--compute offset table for distribution sort
-	i: 1
-	sum: 0
-	until[
-		offs/i: sum
-		sum: sum + t/table/i
-		i: i + 1
-		i = 17
-	]
-	
-
-	;--create code->symbol translation table (symbol sorted)
-	i: 1
-	until[
-		j: lengths/i
-		k: j + 1
-		l: offs/k
-		if j > 0 [
-			l: l + 1
-			t/trans/l: i - 1
-			offs/k: offs/k + 1
-		   
+	;--build extra bits and base tables
+	build-bits-base: func[
+		bits 	[int-ptr!]  
+		base	[int-ptr!]
+		delta 	[integer!]
+		first 	[integer!]
+		/local
+			i 	[integer!]
+			sum [integer!]
+			j	[integer!]
+	][
+		;--build bits table
+		i: 1
+		until[
+			bits/i: 0 
+			i: i + 1
+			i = (delta + 1)
 		]
-		i: i + 1
-		i = (num + 1)
+
+		i: 1   
+		until[
+			j: i + delta 
+			bits/j: i - 1 / delta
+			i: i + 1
+			i = (31 - delta)
+		]
+
+		;--build base table 
+		sum: first
+		i: 1
+		until[
+			base/i: sum
+			sum: sum + (1 << (bits/i))
+			i: i + 1
+			i = 31      
+		]
+
+		
+	]
+
+	;--build the fixed huffman trees
+	build-fixed-trees: function [
+		lt [TREE! ]
+		dt [TREE! ]
+		/local 
+			i [integer!]
+			j [integer!]
+
+	][
+		;--build fixed length tree
+		init-TREE lt
+		init-TREE dt
+		i: 1
+		until[
+			lt/table/i: 0
+			i: i + 1
+			i = 8
+		]
+		lt/table/8: 24
+		lt/table/9: 152
+		lt/table/10: 112
+		i: 1
+		until [
+			lt/trans/i: 256 + i - 1
+			i: i + 1
+			i = 25
+
+		]
+		i: 1
+		until [
+			j: i + 24
+			lt/trans/j: i - 1
+			i: i + 1
+			i = 145
+
+		]
+		i: 1
+		until [
+			j: 168 + i
+			lt/trans/j: 280 + i - 1
+			i: i + 1
+			i = 9
+		]
+
+		i: 1
+		until [
+			j: 176 + i
+			lt/trans/j: 144 + i - 1
+			i: i + 1
+			i = 113
+		]
+
+		;--build fixed distance tree
+		i: 1
+		until[
+			dt/table/i: 0
+			i: i + 1
+			i = 6
+		]
+
+		dt/table/6: 32
+
+		i: 1
+		until[
+			dt/trans/i: i - 1
+			i: i + 1
+			i = 33
+		]
+		
+
+		
+	]
+
+	;--given an array of code length,build a tree
+	build-tree: func [
+		t 		[TREE! ]
+		lengths [int-ptr!]  
+		num 	[integer!]
+		/local
+			offs 	[int-ptr!]
+			i 		[integer!]
+			sum 	[integer!]
+			j 		[integer!]
+			l 		[integer!]
+			k 		[integer!]
+
+	][
+		offs: as int-ptr! allocate 70
+		;--clear code length count table
+		i: 1
+		until [
+			t/table/i: 0
+			i: i + 1
+			i = 17
+		]
+
+		;--scan symbole lengths, and sum code length counts
+		i: 1
+		until[
+			j: lengths/i + 1
+			t/table/j: t/table/j + 1
+			i: i + 1
+			i = (num + 1)
+		]
+		t/table/1: 0
+
+		;--compute offset table for distribution sort
+		i: 1
+		sum: 0
+		until[
+			offs/i: sum
+			sum: sum + t/table/i
+			i: i + 1
+			i = 17
+		]
+		
+
+		;--create code->symbol translation table (symbol sorted)
+		i: 1
+		until[
+			j: lengths/i
+			k: j + 1
+			l: offs/k
+			if j > 0 [
+				l: l + 1
+				t/trans/l: i - 1
+				offs/k: offs/k + 1
+			
+			]
+			i: i + 1
+			i = (num + 1)
+
+		]
+		
+		free as byte-ptr! offs
+		offs/1 = 0
 
 	]
-  	
-	  free as byte-ptr! offs
-	  offs/1 = 0
-
-]
 
 
 	;--get one bit from source stream
 	getbit: func [
-		d [DATA!]
+		d 		[DATA!]
 		return: [integer!]
 
 		/local
-		bit  [integer!]
-		j [integer!]
-		l [int-ptr!]
+			bit [integer!]
+			j 	[integer!]
+			l	[int-ptr!]
 	][
 		;--check if tag is empty
 		d/bitcount: d/bitcount - 1
@@ -249,15 +242,15 @@ build-tree: func [
 
 	;--read a num bit value from a stream and add base
 	read-bits: func [
-		d [DATA! ]
-		num [integer!]
-		base [integer!]
+		d 		[DATA! ]
+		num 	[integer!]
+		base 	[integer!]
 		return: [integer!]
 		/local
-		i [integer!]
-		val [integer!]
-		limit [integer!]
-		mask [integer!]
+			i 		[integer!]
+			val 	[integer!]
+			limit 	[integer!]
+			mask 	[integer!]
 	][ 
 		val: 0
 	;--read num bits
@@ -281,17 +274,18 @@ build-tree: func [
 
 	;--given a data stream and a tree,decode a symbol
 	decode-symbol: func [
-		d [DATA! ]
-		t [TREE! ]
-		 return: [integer!]
+		d 		[DATA! ]
+		t 		[TREE! ]
+		return: [integer!]
 		 /local
-		 sum [integer!]
-		 cur [integer!]
-		 len [integer!]
-		 i [integer!]
-		 j [integer!]
-		 l [integer!]
-		 
+		 	sum [integer!]
+		 	cur [integer!]
+		 	len [integer!]
+			 i 	[integer!]
+			 j 	[integer!]
+			 l 	[integer!]
+				
+
 
 	][ 
 		sum: 0
@@ -314,32 +308,23 @@ build-tree: func [
 
 	;--given a data stream,decode dynamic trees from it
 	decode-trees: func [
-	   d [DATA! ]
-	   lt [TREE! ]
-	   dt [TREE! ]
-
+	   d 	[DATA! ]
+	   lt 	[TREE! ]
+	   dt	[TREE! ]
 	   /local
-	   code-tree [TREE! value]
-	   
-	   lengths [int-ptr!] 
-	   
-	   hlit [integer!]
-	   hdist [integer!]
-	   hclen [integer!]
-
-	   i [integer!]
-	   num [integer!]
-	   length [integer!]
-
-	   clen [integer!]
-
-	   j [integer!]
-	   sym [integer!]
-
-	   prev [integer!]
-
-	   l [integer!]
-
+		code-tree 	[TREE! value]	   
+		lengths		[int-ptr!] 	   
+	  	hlit 		[integer!]
+	   	hdist 		[integer!]
+	   	hclen 		[integer!]
+	  	i 			[integer!]
+	   	num 		[integer!]
+	 	length 		[integer!]
+	   	clen 		[integer!]
+	   	j 			[integer!]
+	   	sym 		[integer!]
+	  	prev 		[integer!]
+	   	l 			[integer!]
 	][  
 		init-TREE code-tree
 
@@ -442,22 +427,20 @@ build-tree: func [
 
 ;--given a stream and two trees, inflate a block of data
 	inflate-block-data: func [
-		d [DATA! ]
-		lt [TREE! ]
-		dt [TREE! ]
+		d 		[DATA! ]
+		lt 		[TREE! ]
+		dt 		[TREE! ]
 		return: [integer!]
 		/local
-		start [byte-ptr! ]
-		sym [integer!]
-
-		length [integer!]
-		dist [integer!]
-		offs [integer!]
-		i [integer!]
-
-		j [integer!]
-		l [integer!]
-		k [integer!]
+		start 	[byte-ptr! ]
+		sym 	[integer!]
+		length 	[integer!]
+		dist 	[integer!]
+		offs 	[integer!]
+		i 		[integer!]
+		j 		[integer!]
+		l 		[integer!]
+		k 		[integer!]
 	][
 		;--remember current output position
 		start: d/dest
@@ -494,34 +477,29 @@ build-tree: func [
 					i: i + 1
 					i = (length + 1)
 				]
-				
 				d/dest: d/dest + length
-
 			]
 			l < 0
 		]
-		0
-		
-
+		0		
 	] 
 
 
 	;--inflate an uncompressed block of data
 	inflate-uncompressed-block: func[
-		d [DATA! ]
-		return: [integer!]
+		d 			[DATA! ]
+		return: 	[integer!]
 		/local
-		length [integer!]
-		invlength [integer!]
-		i [integer!]
-
-		j [byte-ptr!]
-		l [byte-ptr!]
+		length 		[integer!]
+		invlength 	[integer!]
+		i 			[integer!]
+		j			[byte-ptr!]
+		l 			[byte-ptr!]
 	][
 		;--get length
 		length: as integer! d/source/2  
 		length: 256 * length + d/source/1
-
+		
 		;--get one's complement of length
 		invlength: as integer! d/source/4 
 		invlength: 256 * invlength + d/source/3
@@ -574,36 +552,32 @@ build-tree: func [
 		build-fixed-trees sltree sdtree
 		;--build extra bits and base tables
 		build-bits-base length-bits length-base 4 3 
-		build-bits-base dist-bits dist-base 2 1
-		
+		build-bits-base dist-bits dist-base 2 1		
 		;--fix a special carse
 		length-bits/29: 0
-		length-base/29: 258
-		
+		length-base/29: 258		
 	]
 
 	;--inflate stream from source to dest
 	uncompress: func [
-		dest [byte-ptr!] 
-		destLen [int-ptr!]
-		source [byte-ptr!]
-		sourceLen [integer!]
-		return: [integer!]
+		dest 		[byte-ptr!] 
+		destLen 	[int-ptr!]
+		source 		[byte-ptr!]
+		sourceLen 	[integer!]
+		return:		[integer!]
 
 		/local
-		bfinal [integer!]
-		d [DATA! value]
+		bfinal 		[integer!]
+		d 			[DATA! value]
 
-		btype [integer!]
-		res [integer!]
+		btype 		[integer!]
+		res 		[integer!]
 	][
 		;--initialise data
 		d/source: source
 		d/bitcount: 1
-
 		d/dest: dest
 		d/destLen: destLen
-
 		destLen/value: 0
 
 		until [
@@ -648,10 +622,10 @@ build-tree: func [
 #import [
 	"zlib.dll" cdecl [
 		compress: "compress" [
-			dst [byte-ptr!]
-			dstLen [int-ptr!]
-			src [c-string!]
-			srcLen [integer!]
+			dst 	[byte-ptr!]
+			dstLen 	[int-ptr!]
+			src 	[c-string!]
+			srcLen 	[integer!]
 
 			return: [integer!]
 		]
