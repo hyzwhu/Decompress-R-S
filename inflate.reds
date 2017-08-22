@@ -24,36 +24,34 @@ DATA!: alias struct! [
 	
 	
 ]
-;---------------------------------------------------
-;--uninitialized global data (static structures)----
-;---------------------------------------------------
+
 sltree: declare TREE!
 sdtree: declare TREE!
 
-;--extra bits and base tables for length codes--
+;--extra bits and base tables for length codes
 length-bits: as int-ptr! allocate 30 * size? integer! ;byte->int pointer
 length-base: as int-ptr! allocate 30 * size? integer!
 
-;--extra bits and base table for distance codes--
+;--extra bits and base table for distance codes
 dist-bits: as int-ptr! allocate 30 * size? integer!  ;byte->int pointer
 dist-base: as int-ptr! allocate 30 * size? integer!
 
-;--special ordring of code length  code--
+;--special ordring of code length  code
 clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 
-;--build extra bits and base tables--
+;--build extra bits and base tables
 build-bits-base: func[
 	bits [int-ptr!]  
 	base [int-ptr!]
 	delta [integer!]
-	first1 [integer!]
+	first [integer!]
 
 	/local
 	i [integer!]
 	sum [integer!]
 	j [integer!]
 ][
-	;--build bits table --
+	;--build bits table
 	i: 1
 	until[
 		bits/i: 0 
@@ -69,8 +67,8 @@ build-bits-base: func[
 		i = (31 - delta)
 	]
 
-	;--build base table -- 
-	sum: first1
+	;--build base table 
+	sum: first
 	i: 1
 	until[
 		base/i: sum
@@ -82,7 +80,7 @@ build-bits-base: func[
 	
 ]
 
-;--build the fixed huffman trees--
+;--build the fixed huffman trees
 build-fixed-trees: function [
 	lt [TREE! ]
 	dt [TREE! ]
@@ -92,7 +90,7 @@ build-fixed-trees: function [
 	j [integer!]
 
 ][
-	;--build fixed length tree--
+	;--build fixed length tree
 	init-TREE lt
 	init-TREE dt
 	i: 1
@@ -135,7 +133,7 @@ build-fixed-trees: function [
 		i = 113
 	]
 
-	;--build fixed distance tree--
+	;--build fixed distance tree
 	i: 1
 	until[
 		dt/table/i: 0
@@ -156,7 +154,7 @@ build-fixed-trees: function [
 	
 ]
 
-;--given an array of code length,build a tree--
+;--given an array of code length,build a tree
 build-tree: func [
 	t [TREE! ]
 	lengths [int-ptr!]  
@@ -171,7 +169,7 @@ build-tree: func [
 
 ][
 	offs: as int-ptr! allocate 70
-	;--clear code length count table--
+	;--clear code length count table
 	i: 1
 	until [
 		t/table/i: 0
@@ -179,7 +177,7 @@ build-tree: func [
 		i = 17
 	]
 
-	;--scan symbole lengths, and sum code length counts--
+	;--scan symbole lengths, and sum code length counts
 	i: 1
 	until[
 		j: lengths/i + 1
@@ -189,7 +187,7 @@ build-tree: func [
 	]
 	t/table/1: 0
 
-	;--compute offset table for distribution sort--
+	;--compute offset table for distribution sort
 	i: 1
 	sum: 0
 	until[
@@ -200,7 +198,7 @@ build-tree: func [
 	]
 	
 
-	;--create code->symbol translation table (symbol sorted) --
+	;--create code->symbol translation table (symbol sorted)
 	i: 1
 	until[
 		j: lengths/i
@@ -216,15 +214,14 @@ build-tree: func [
 		i = (num + 1)
 
 	]
-  	system/stack/free as integer! offs
+  	
+	  free as byte-ptr! offs
+	  offs/1 = 0
 
 ]
 
-;---------------------
-;---decode  function--
-;---------------------
 
-	;--get one bit from source stream--
+	;--get one bit from source stream
 	getbit: func [
 		d [DATA!]
 		return: [integer!]
@@ -237,12 +234,12 @@ build-tree: func [
 		;--check if tag is empty
 		d/bitcount: d/bitcount - 1
 		if d/bitcount = 0 [
-			;--load next tag--
+			;--load next tag
 			d/source: d/source + 1 
 			d/tag: as integer! d/source/value
 			d/bitcount: 8   
 		]
-		;--shift bit out of tag--
+		;--shift bit out of tag
 		j: d/tag
 		d/tag: d/tag >> 1
 		j and 00000001
@@ -250,7 +247,7 @@ build-tree: func [
 		
 	]
 
-	;--read a num bit value from a stream and add base--
+	;--read a num bit value from a stream and add base
 	read-bits: func [
 		d [DATA! ]
 		num [integer!]
@@ -263,7 +260,7 @@ build-tree: func [
 		mask [integer!]
 	][ 
 		val: 0
-	;--read num bits--
+	;--read num bits
 	if num <> 0 [ 
 		limit: 1 << num
 		mask: 1
@@ -282,7 +279,7 @@ build-tree: func [
 		val + base   
 	]   
 
-	;--given a data stream and a tree,decode a symbol--
+	;--given a data stream and a tree,decode a symbol
 	decode-symbol: func [
 		d [DATA! ]
 		t [TREE! ]
@@ -315,7 +312,7 @@ build-tree: func [
 
 	]
 
-	;--given a data stream,decode dynamic trees from it--
+	;--given a data stream,decode dynamic trees from it
 	decode-trees: func [
 	   d [DATA! ]
 	   lt [TREE! ]
@@ -347,11 +344,11 @@ build-tree: func [
 		init-TREE code-tree
 
 		lengths: as int-ptr! allocate 1400
-		;--get 5 bits HLIT (257-286)--
+		;--get 5 bits HLIT (257-286)
 		hlit: read-bits d 5 257
 		;--get 5 bits HDIST (1-32)
 		hdist: read-bits d 5 1
-		;--get 4 bits HCLEN (4-19)--
+		;--get 4 bits HCLEN (4-19)
 		hclen: read-bits d 4 4
 		i: 1
 		until [
@@ -360,10 +357,10 @@ build-tree: func [
 			i = 20
 		]
 
-		;--read code lengths for code lengte alphabet--
+		;--read code lengths for code lengte alphabet
 		i: 1
 		until [
-			;--get 3 bits code length (0-7)--
+			;--get 3 bits code length (0-7)
 			clen: read-bits d 3 0
 			j: clcidx/i + 1
 			lengths/j: clen
@@ -371,23 +368,17 @@ build-tree: func [
 			i = (hclen + 1)
 
 		]
-		;--test--
-		i: 1
-		until [
-			 i: i + 1
-			 i = 20
-		]
 		 
-		;--build code length tree--
+		;--build code length tree
 		build-tree code-tree lengths 19
 
-		;--decode code lengths for the dynamic trees--
+		;--decode code lengths for the dynamic trees
 		num: 0
 		until [
 			sym: decode-symbol d code-tree
 			switch sym[
 				16 [
-					;--copy previous code length 3-6 times (read 2 bits)--
+					;--copy previous code length 3-6 times (read 2 bits)
 					j: num - 1 + 1
 					prev: lengths/j
 					length: read-bits d 2 3
@@ -404,7 +395,7 @@ build-tree: func [
 				
 
 				17 [
-					;--repeat code length 0 for 3-10 times (read 3 bits)--
+					;--repeat code length 0 for 3-10 times (read 3 bits)
 					length: read-bits d 3 3
 					until [
 						l: num + 1
@@ -418,7 +409,7 @@ build-tree: func [
 				
 
 				18 [
-					;--repeat code length 0 for 11-138 times (read 7 bits)--
+					;--repeat code length 0 for 11-138 times (read 7 bits)
 					length: read-bits d 7 11
 					 until [
 						l: num + 1
@@ -443,17 +434,13 @@ build-tree: func [
 			num >= (hlit + hdist)
 		]
 		
-		;--build dynamic trees--
+		;--build dynamic trees
 		build-tree lt lengths hlit
 		build-tree dt (lengths + hlit) hdist
 
 	]
 
-;--------------------------
-;--block inflate function--
-;--------------------------
-
-;--given a stream and two trees, inflate a block of data--
+;--given a stream and two trees, inflate a block of data
 	inflate-block-data: func [
 		d [DATA! ]
 		lt [TREE! ]
@@ -472,7 +459,7 @@ build-tree: func [
 		l [integer!]
 		k [integer!]
 	][
-		;--remember current output position--
+		;--remember current output position
 		start: d/dest
 		l: 1
 		until [
@@ -490,16 +477,16 @@ build-tree: func [
 			]
 
 			if sym > 256 [
-				sym: sym - 257  ;256 or 257
+				sym: sym - 257  
 				k: sym + 1
-				;--possibly get more bits from length code--
+				;--possibly get more bits from length code
 				length: read-bits d length-bits/k length-base/k
 				dist: decode-symbol d dt
-				;--possibly get more bits from distance code--
+				;--possibly get more bits from distance code
 				k: dist + 1
 				offs: read-bits d dist-bits/k dist-base/k
 
-				;--copy match--
+				;--copy match
 				i: 1
 				until[
 					j: i - offs
@@ -519,7 +506,7 @@ build-tree: func [
 	] 
 
 
-	;--inflate an uncompressed block of data--
+	;--inflate an uncompressed block of data
 	inflate-uncompressed-block: func[
 		d [DATA! ]
 		return: [integer!]
@@ -531,19 +518,19 @@ build-tree: func [
 		j [byte-ptr!]
 		l [byte-ptr!]
 	][
-		;--get length--
+		;--get length
 		length: as integer! d/source/2  
 		length: 256 * length + d/source/1
 
-		;--get one's complement of length--
+		;--get one's complement of length
 		invlength: as integer! d/source/4 
 		invlength: 256 * invlength + d/source/3
 
-		;--check length--
+		;--check length
 		
 		d/source: d/source + 4
 
-		;--copy block--
+		;--copy block
 		i: length
 		until [
 			j: d/dest + 1
@@ -553,7 +540,7 @@ build-tree: func [
 			i = 0
 		]
 
-		;--make sure we start next block on a byte boundary--
+		;--make sure we start next block on a byte boundary
 		d/bitcount: 0
 		d/destLen: d/destLen + length
 		system/stack/free as integer! j
@@ -561,7 +548,7 @@ build-tree: func [
 		0
 	]
 
-	;--inflate a block of data compressed with fixed huffman trees--
+	;--inflate a block of data compressed with fixed huffman trees
 	inflate-fixed-block: func [
 			d [DATA! ]
 	
@@ -569,38 +556,33 @@ build-tree: func [
 		inflate-block-data d sltree sdtree
 	]
 
-	;--inflate a block of data compressed with dynamic huffman trees--
+	;--inflate a block of data compressed with dynamic huffman trees
 	inflata-dynamic-block: func [
 		d [DATA! ]
-		;return [integer]
 	][  init-TREE d/ltree
 		init-TREE d/dtree
-		;--decode trees from stream--
+		;--decode trees from stream
 		decode-trees d d/ltree d/dtree
 
-		;--decode block using decoded trees--
+		;--decode block using decoded trees
 		inflate-block-data d d/ltree d/dtree        
 	]
 
-;----------------------
-;--public functions----
-;----------------------
-	
-	;--initialize global (static) data--
+	;--initialize global (static) data
 	init: func [][
-		;--build fixed huffman trees--
+		;--build fixed huffman trees
 		build-fixed-trees sltree sdtree
-		;--build extra bits and base tables--
+		;--build extra bits and base tables
 		build-bits-base length-bits length-base 4 3 
 		build-bits-base dist-bits dist-base 2 1
 		
-		;--fix a special carse--
+		;--fix a special carse
 		length-bits/29: 0
 		length-base/29: 258
 		
 	]
 
-	;--inflate stream from source to dest--
+	;--inflate stream from source to dest
 	uncompress: func [
 		dest [byte-ptr!] 
 		destLen [int-ptr!]
@@ -615,7 +597,7 @@ build-tree: func [
 		btype [integer!]
 		res [integer!]
 	][
-		;--initialise data--
+		;--initialise data
 		d/source: source
 		d/bitcount: 1
 
@@ -625,35 +607,31 @@ build-tree: func [
 		destLen/value: 0
 
 		until [
-			;--read final block flag--
+			;--read final block flag
 			bfinal: getbit d
-			;--read block type (2 bits)--
+			;--read block type (2 bits)
 			btype: read-bits d 2 0
 
 			switch btype [
 				0 [
-					;--decompress uncompressed block--
+					;--decompress uncompressed block
 					res: inflate-uncompressed-block d
-					print-line "decompress uncompressed block"
 					break
 				]
 
 				1 [
-					;--decompress block with fixed huffman trees--
+					;--decompress block with fixed huffman trees
 					inflate-fixed-block d  
-					print-line "decompress block with fixed huffman trees"
 					break
 				]
 
 				2 [
-					print-line "decompress block with dynamic huffman trees"
-					;--decompress block with dynamic huffman trees--
+					;--decompress block with dynamic huffman trees
 					inflata-dynamic-block d
 					break
 				]
 
 				default [
-					print-line ["uncompressed is error"]
 					break
 				]
 			]
