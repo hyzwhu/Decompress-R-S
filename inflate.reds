@@ -161,7 +161,7 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			k 		[integer!]
 
 	][
-		offs: as int-ptr! allocate 70
+		offs: as int-ptr! system/stack/allocate 70
 		;--clear code length count table
 		i: 1
 		until [
@@ -321,7 +321,7 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 	][  
 		init-TREE code-tree
 
-		lengths: as int-ptr! allocate 1400
+		lengths: as int-ptr! system/stack/allocate 1400
 		;--get 5 bits HLIT (257-286)
 		hlit: read-bits d 5 257
 		;--get 5 bits HDIST (1-32)
@@ -415,7 +415,6 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		;--build dynamic trees
 		build-tree lt lengths hlit
 		build-tree dt (lengths + hlit) hdist
-		free as byte-ptr! lengths
 		free as byte-ptr! code-tree/trans
 		free as byte-ptr! code-tree/table
 	]
@@ -516,8 +515,6 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		;--make sure we start next block on a byte boundary
 		d/bitcount: 0
 		d/destLen: d/destLen + length
-		system/stack/free as integer! j
-		system/stack/free as integer! l
 		0
 	]
 
@@ -619,7 +616,6 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 					;--if res!=ok return error
 					bfinal <> 0
 		]
-		free-block
 		 return 0
 	]
 
