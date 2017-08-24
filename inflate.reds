@@ -69,9 +69,7 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			sum: sum + (1 << (bits/i))
 			i: i + 1
 			i = 31      
-		]
-
-		
+		]		
 	]
 
 	;--build the fixed huffman trees
@@ -143,8 +141,10 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			i = 33
 		]
 		
-
-		
+		free as byte-ptr! lt/trans
+		free as byte-ptr! lt/table
+		free as byte-ptr! dt/trans
+		free as byte-ptr! dt/table		
 	]
 
 	;--given an array of code length,build a tree
@@ -209,8 +209,6 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		]
 		
 		free as byte-ptr! offs
-		offs/1 = 0
-
 	]
 
 
@@ -235,9 +233,7 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		;--shift bit out of tag
 		j: d/tag
 		d/tag: d/tag >> 1
-		j and 00000001
-	  
-		
+		j and 01h		
 	]
 
 	;--read a num bit value from a stream and add base
@@ -264,10 +260,7 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			]
 			mask: mask * 2
 			mask >= limit
-		]
-		
-
-
+		]		
 	]
 		val + base   
 	]   
@@ -422,10 +415,12 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		;--build dynamic trees
 		build-tree lt lengths hlit
 		build-tree dt (lengths + hlit) hdist
-
+		free as byte-ptr! lengths
+		free as byte-ptr! code-tree/trans
+		free as byte-ptr! code-tree/table
 	]
 
-;--given a stream and two trees, inflate a block of data
+	;--given a stream and two trees, inflate a block of data
 	inflate-block-data: func [
 		d 		[DATA! ]
 		lt 		[TREE! ]
@@ -537,13 +532,18 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 	;--inflate a block of data compressed with dynamic huffman trees
 	inflata-dynamic-block: func [
 		d [DATA! ]
-	][  init-TREE d/ltree
+	][  
+		init-TREE d/ltree
 		init-TREE d/dtree
 		;--decode trees from stream
 		decode-trees d d/ltree d/dtree
 
 		;--decode block using decoded trees
-		inflate-block-data d d/ltree d/dtree        
+		inflate-block-data d d/ltree d/dtree 
+		free as byte-ptr! d/ltree/trans
+		free as byte-ptr! d/ltree/table
+		free as byte-ptr! d/dtree/trans
+		free as byte-ptr! d/dtree/table     
 	]
 
 	;--initialize global (static) data
@@ -558,6 +558,14 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		length-base/29: 258		
 	]
 
+	;--free the allocated block
+	free-block: func [][
+		free as byte-ptr! length-bits
+		free as byte-ptr! length-base
+		free as byte-ptr! dist-base
+		free as byte-ptr! dist-bits
+	]
+
 	;--inflate stream from source to dest
 	uncompress: func [
 		dest 		[byte-ptr!] 
@@ -565,15 +573,14 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		source 		[byte-ptr!]
 		sourceLen 	[integer!]
 		return:		[integer!]
-
 		/local
 		bfinal 		[integer!]
 		d 			[DATA! value]
-
 		btype 		[integer!]
 		res 		[integer!]
 	][
 		;--initialise data
+		init
 		d/source: source
 		d/bitcount: 1
 		d/dest: dest
@@ -612,6 +619,7 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 					;--if res!=ok return error
 					bfinal <> 0
 		]
+		free-block
 		 return 0
 	]
 
@@ -654,7 +662,6 @@ until [
 dst1: as byte-ptr! allocate 100000
 c: declare byte!
 dstLen1: 1024
-init
 src1: src1 + 1
 srcLen: srcLen - 6
 uncompress dst1 :dstLen1 src1 srcLen
