@@ -1,42 +1,48 @@
 Red/System []
-TREE!: alias struct! [
-	table [int-ptr!]
-	trans [int-ptr!]
-]
-init-TREE: func [
-	a [TREE!]
-][
-	a/table: as int-ptr! allocate 16 * size? integer!
-	a/trans: as int-ptr! allocate 288 * size? integer!
-]
 
-DATA!: alias struct! [
-	source 		[byte-ptr!]   
-	tag 		[integer!]
-	bitcount	[integer!]
-	dest 		[byte-ptr!]       
-	destLen 	[int-ptr!]
-	ltree 		[TREE! value]
-	dtree 		[TREE! value]	
-]
+deflate: context [
 
-sltree: declare TREE!
-sdtree: declare TREE!
+	init?: no
 
-;--extra bits and base tables for length codes
-length-bits: as int-ptr! allocate 30 * size? integer! ;byte->int pointer
-length-base: as int-ptr! allocate 30 * size? integer!
+	TREE!: alias struct! [
+		table [int-ptr!]
+		trans [int-ptr!]
+	]
 
-;--extra bits and base table for distance codes
-dist-bits: as int-ptr! allocate 30 * size? integer!  ;byte->int pointer
-dist-base: as int-ptr! allocate 30 * size? integer!
+	init-TREE: func [
+		a [TREE!]
+	][
+		a/table: as int-ptr! allocate 16 * size? integer!
+		a/trans: as int-ptr! allocate 288 * size? integer!
+	]
 
-;--special ordring of code length  code
-clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
+	DATA!: alias struct! [
+		source 		[byte-ptr!]
+		tag 		[integer!]
+		bitcount	[integer!]
+		dest 		[byte-ptr!]
+		destLen 	[int-ptr!]
+		ltree 		[TREE! value]
+		dtree 		[TREE! value]
+	]
+
+	sltree: declare TREE!
+	sdtree: declare TREE!
+
+	;--extra bits and base tables for length codes
+	length-bits: as int-ptr! allocate 30 * size? integer! ;byte->int pointer
+	length-base: as int-ptr! allocate 30 * size? integer!
+
+	;--extra bits and base table for distance codes
+	dist-bits: as int-ptr! allocate 30 * size? integer!  ;byte->int pointer
+	dist-base: as int-ptr! allocate 30 * size? integer!
+
+	;--special ordring of code length  code
+	clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 
 	;--build extra bits and base tables
 	build-bits-base: func[
-		bits 	[int-ptr!]  
+		bits 	[int-ptr!]
 		base	[int-ptr!]
 		delta 	[integer!]
 		first 	[integer!]
@@ -48,38 +54,37 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		;--build bits table
 		i: 1
 		until[
-			bits/i: 0 
+			bits/i: 0
 			i: i + 1
 			i = (delta + 1)
 		]
 
-		i: 1   
+		i: 1
 		until[
-			j: i + delta 
+			j: i + delta
 			bits/j: i - 1 / delta
 			i: i + 1
 			i = (31 - delta)
 		]
 
-		;--build base table 
+		;--build base table
 		sum: first
 		i: 1
 		until[
 			base/i: sum
 			sum: sum + (1 << (bits/i))
 			i: i + 1
-			i = 31      
-		]		
+			i = 31
+		]
 	]
 
 	;--build the fixed huffman trees
 	build-fixed-trees: function [
-		lt 		[TREE! ]
-		dt 		[TREE! ]
-		/local 
+		lt 		[TREE!]
+		dt 		[TREE!]
+		/local
 			i 	[integer!]
 			j 	[integer!]
-
 	][
 		;--build fixed length tree
 		init-TREE lt
@@ -140,17 +145,12 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			i: i + 1
 			i = 33
 		]
-		
-		; free as byte-ptr! lt/trans
-		; free as byte-ptr! lt/table
-		; free as byte-ptr! dt/trans
-		; free as byte-ptr! dt/table		
 	]
 
 	;--given an array of code length,build a tree
 	build-tree: func [
 		t 			[TREE! ]
-		lengths 	[int-ptr!]  
+		lengths 	[byte-ptr!]
 		num 		[integer!]
 		/local
 			offs 	[int-ptr!]
@@ -159,9 +159,9 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			j 		[integer!]
 			l 		[integer!]
 			k 		[integer!]
-
 	][
-		offs: as int-ptr! system/stack/allocate 70
+		offs: system/stack/allocate 16 * size? integer!
+
 		;--clear code length count table
 		i: 1
 		until [
@@ -173,7 +173,7 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		;--scan symbole lengths, and sum code length counts
 		i: 1
 		until[
-			j: lengths/i + 1
+			j: (as-integer lengths/i) + 1
 			t/table/j: t/table/j + 1
 			i: i + 1
 			i = (num + 1)
@@ -189,25 +189,24 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			i: i + 1
 			i = 17
 		]
-		
 
 		;--create code->symbol translation table (symbol sorted)
 		i: 1
 		until[
-			j: lengths/i
+			j: as-integer lengths/i
 			k: j + 1
 			l: offs/k
 			if j > 0 [
 				l: l + 1
 				t/trans/l: i - 1
 				offs/k: offs/k + 1
-			
+
 			]
 			i: i + 1
 			i = (num + 1)
 
 		]
-		
+
 		free as byte-ptr! offs
 	]
 
@@ -226,14 +225,14 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		d/bitcount: d/bitcount - 1
 		if d/bitcount = 0 [
 			;--load next tag
-			d/source: d/source + 1 
+			d/source: d/source + 1
 			d/tag: as integer! d/source/value
-			d/bitcount: 8   
+			d/bitcount: 8
 		]
 		;--shift bit out of tag
 		j: d/tag
 		d/tag: d/tag >> 1
-		j and 01h		
+		j and 01h
 	]
 
 	;--read a num bit value from a stream and add base
@@ -247,10 +246,10 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			val 	[integer!]
 			limit 	[integer!]
 			mask 	[integer!]
-	][ 
+	][
 		val: 0
 		;--read num bits
-		if num <> 0 [ 
+		if num <> 0 [
 			limit: 1 << num
 			mask: 1
 			until[
@@ -260,10 +259,10 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 				]
 				mask: mask * 2
 				mask >= limit
-			]		
+			]
 		]
-			val + base   
-		]   
+			val + base
+		]
 
 	;--given a data stream and a tree,decode a symbol
 	decode-symbol: func [
@@ -277,14 +276,11 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			 i 	[integer!]
 			 j 	[integer!]
 			 l 	[integer!]
-				
-
-
-	][ 
+	][
 		sum: 0
 		cur: 0
 		len: 1
-		
+
 		until[
 			i: getbit d
 			cur: 2 * cur + i
@@ -305,8 +301,8 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 	   lt 	[TREE! ]
 	   dt	[TREE! ]
 	   /local
-		code-tree 	[TREE! value]	   
-		lengths		[int-ptr!] 	   
+		code-tree 	[TREE! value]
+		lengths		[byte-ptr!]
 	  	hlit 		[integer!]
 	   	hdist 		[integer!]
 	   	hclen 		[integer!]
@@ -317,13 +313,15 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 	   	j 			[integer!]
 	   	sym 		[integer!]
 	  	prev 		[integer!]
-	   	l 			[integer!]
-	][  
-		;init-TREE code-tree
-		code-tree/table: as int-ptr! system/stack/allocate 16 * size? integer!
-		code-tree/trans: as int-ptr! system/stack/allocate 288 * size? integer!
+		l 			[integer!]
+		buf			[int-ptr!]
+	][
+		buf: system/stack/allocate (304 * size? integer!) + 320
+		code-tree/table: buf
+		code-tree/trans: buf + 16
 
-		lengths: as int-ptr! system/stack/allocate 1400
+		lengths: as byte-ptr! buf + 304
+
 		;--get 5 bits HLIT (257-286)
 		hlit: read-bits d 5 257
 		;--get 5 bits HDIST (1-32)
@@ -332,7 +330,7 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		hclen: read-bits d 4 4
 		i: 1
 		until [
-			lengths/i: 0
+			lengths/i: as byte! 0
 			i: i + 1
 			i = 20
 		]
@@ -343,12 +341,12 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			;--get 3 bits code length (0-7)
 			clen: read-bits d 3 0
 			j: clcidx/i + 1
-			lengths/j: clen
+			lengths/j: as byte! clen
 			i: i + 1
 			i = (hclen + 1)
 
 		]
-		 
+
 		;--build code length tree
 		build-tree code-tree lengths 19
 
@@ -356,68 +354,53 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		num: 0
 		until [
 			sym: decode-symbol d code-tree
-			switch sym[
+			switch sym [
 				16 [
 					;--copy previous code length 3-6 times (read 2 bits)
 					j: num - 1 + 1
-					prev: lengths/j
+					prev: as-integer lengths/j
 					length: read-bits d 2 3
 					until [
 						l: num + 1
-						lengths/l: prev
+						lengths/l: as-byte prev
 						num: num + 1
 						length: length - 1
 						length = 0
-						
 					]
-					
 				]
-				
-
 				17 [
 					;--repeat code length 0 for 3-10 times (read 3 bits)
 					length: read-bits d 3 3
 					until [
 						l: num + 1
-						lengths/l: 0
+						lengths/l: as-byte 0
 						num: num + 1
 						length: length - 1
 						length = 0
-						]
-						
 					]
-				
-
+				]
 				18 [
 					;--repeat code length 0 for 11-138 times (read 7 bits)
 					length: read-bits d 7 11
-					 until [
+					until [
 						l: num + 1
-						lengths/l: 0
+						lengths/l: as-byte 0
 						num: num + 1
 						length: length - 1
 						length = 0
-						]
-					   
 					]
-				
-
+				]
 				default [
 					l: num + 1
-					lengths/l: sym
+					lengths/l: as-byte sym
 					num: num + 1
-					
 				]
-				
-
-				]
+			]
 			num >= (hlit + hdist)
 		]
 		;--build dynamic trees
 		build-tree lt lengths hlit
 		build-tree dt (lengths + hlit) hdist
-		; free as byte-ptr! code-tree/trans
-		; free as byte-ptr! code-tree/table
 	]
 
 	;--given a stream and two trees, inflate a block of data
@@ -427,15 +410,15 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		dt 		[TREE! ]
 		return: [integer!]
 		/local
-		start 	[byte-ptr! ]
-		sym 	[integer!]
-		length 	[integer!]
-		dist 	[integer!]
-		offs 	[integer!]
-		i 		[integer!]
-		j 		[integer!]
-		l 		[integer!]
-		k 		[integer!]
+			start 	[byte-ptr!]
+			sym 	[integer!]
+			length 	[integer!]
+			dist 	[integer!]
+			offs 	[integer!]
+			i 		[integer!]
+			j 		[integer!]
+			l 		[integer!]
+			k 		[integer!]
 	][
 		;--remember current output position
 		start: d/dest
@@ -455,7 +438,7 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			]
 
 			if sym > 256 [
-				sym: sym - 257  
+				sym: sym - 257
 				k: sym + 1
 				;--possibly get more bits from length code
 				length: read-bits d length-bits/k length-base/k
@@ -466,7 +449,7 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 
 				;--copy match
 				i: 1
-				until[
+				until [
 					j: i - offs
 					d/dest/i: d/dest/j
 					i: i + 1
@@ -476,8 +459,8 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 			]
 			l < 0
 		]
-		0		
-	] 
+		0
+	]
 
 
 	;--inflate an uncompressed block of data
@@ -485,22 +468,21 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		d 			[DATA! ]
 		return: 	[integer!]
 		/local
-		length 		[integer!]
-		invlength 	[integer!]
-		i 			[integer!]
-		j			[byte-ptr!]
-		l 			[byte-ptr!]
+			length 		[integer!]
+			invlength 	[integer!]
+			i 			[integer!]
+			j			[byte-ptr!]
+			l 			[byte-ptr!]
 	][
 		;--get length
-		length: as integer! d/source/2  
+		length: as integer! d/source/2
 		length: 256 * length + d/source/1
-		
+
 		;--get one's complement of length
-		invlength: as integer! d/source/4 
+		invlength: as integer! d/source/4
 		invlength: 256 * invlength + d/source/3
 
 		;--check length
-		
 		d/source: d/source + 4
 
 		;--copy block
@@ -520,32 +502,31 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 	]
 
 	;--inflate a block of data compressed with fixed huffman trees
-	inflate-fixed-block: func [
-			d [DATA! ]
-	
-	][
+	inflate-fixed-block: func [d [DATA!]][
 		inflate-block-data d sltree sdtree
 	]
 
 	;--inflate a block of data compressed with dynamic huffman trees
-	inflata-dynamic-block: func [
-		d [DATA! ]
-	][  
-		init-TREE d/ltree
-		; d/ltree/table: as int-ptr! system/stack/allocate 16 * size? integer!
-		; d/ltree/trans: as int-ptr! system/stack/allocate 288 * size? integer!
-		init-TREE d/dtree
-		; d/dtree/table: as int-ptr! system/stack/allocate 16 * size? integer!
-		; d/dtree/trans: as int-ptr! system/stack/allocate 288 * size? integer!		
+	inflata-dynamic-block: func [d [DATA!] /local buf [int-ptr!]][
+		buf: system/stack/allocate 608 * size? integer!
+
+		;init-TREE d/ltree
+		d/ltree/table: buf
+		d/ltree/trans: buf + 16
+
+		;init-TREE d/dtree
+		d/dtree/table: buf + 304		;-- 16 + 288
+		d/dtree/trans: buf + 320		;-- 304 + 16
+
 		;--decode trees from stream
 		decode-trees d d/ltree d/dtree
 
 		;--decode block using decoded trees
-		inflate-block-data d d/ltree d/dtree 
+		inflate-block-data d d/ltree d/dtree
 		free as byte-ptr! d/ltree/trans
 		free as byte-ptr! d/ltree/table
 		free as byte-ptr! d/dtree/trans
-		free as byte-ptr! d/dtree/table     
+		free as byte-ptr! d/dtree/table
 	]
 
 	;--initialize global (static) data
@@ -553,11 +534,11 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 		;--build fixed huffman trees
 		build-fixed-trees sltree sdtree
 		;--build extra bits and base tables
-		build-bits-base length-bits length-base 4 3 
-		build-bits-base dist-bits dist-base 2 1		
+		build-bits-base length-bits length-base 4 3
+		build-bits-base dist-bits dist-base 2 1
 		;--fix a special carse
 		length-bits/29: 0
-		length-base/29: 258		
+		length-base/29: 258
 	]
 
 	;--free the allocated block
@@ -574,17 +555,19 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 
 	;--inflate stream from source to dest
 	uncompress: func [
-		dest 		[byte-ptr!] 
+		dest 		[byte-ptr!]
 		destLen 	[int-ptr!]
 		source 		[byte-ptr!]
 		sourceLen 	[integer!]
 		return:		[integer!]
 		/local
-		bfinal 		[integer!]
-		d 			[DATA! value]
-		btype 		[integer!]
-		res 		[integer!]
+			bfinal	[integer!]
+			d		[DATA! value]
+			btype	[integer!]
+			res		[integer!]
 	][
+		unless init? [init?: yes init]
+
 		;--initialise data
 		d/source: source
 		d/bitcount: 1
@@ -602,31 +585,24 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 				0 [
 					;--decompress uncompressed block
 					res: inflate-uncompressed-block d
-					break
 				]
-
 				1 [
 					;--decompress block with fixed huffman trees
-					inflate-fixed-block d  
-					break
+					inflate-fixed-block d
 				]
-
 				2 [
 					;--decompress block with dynamic huffman trees
 					inflata-dynamic-block d
-					break
 				]
-
-				default [
-					break
-				]
+				default [0]
 			]
-					;--if res!=ok return error
-					bfinal <> 0
+			;--if res!=ok return error
+			bfinal <> 0
 		]
-		 free-block
-		 return 0
+		return 0
 	]
+] ;-- end deflate context
+
 
 ;----------------------
 ;----test function-----
@@ -647,7 +623,8 @@ clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
 ;--compress data
 res: declare integer!
 src: "tomorrow,	i will try my best to steady, even though there are many difficulties  "
-dst: as byte-ptr! allocate 1000000
+probe src
+dst: allocate 1000000
 dstLen: 1024
 srcLen: declare integer!
 srcLen: length? src
@@ -656,28 +633,17 @@ print-line ["return :" res ]
 j: 0
 
 ;--decompress data
-init
 srcLen: dstLen
-src1: as byte-ptr! allocate 100000
-i: 1
-until [
-	src1/i: dst/i
-	i: i + 1
-	i = (srcLen + 1)
-]
-dst1: as byte-ptr! allocate 100000
-c: declare byte!
+src1: dst
+
+dst1: allocate 100000
 dstLen1: 1024
+
 src1: src1 + 1
 srcLen: srcLen - 6
-uncompress dst1 :dstLen1 src1 srcLen
-i: 1
-until [
-	c: as byte! dst1/i
-	print [c]
-	i: i + 1
-	i = dstLen1
-]
+deflate/uncompress dst1 :dstLen1 src1 srcLen
+
+probe as-c-string dst1
 
 
 
