@@ -30,11 +30,11 @@ deflate: context [
 	sdtree: declare TREE!
 
 	;--extra bits and base tables for length codes
-	length-bits: as int-ptr! allocate 30 * size? integer! ;byte->int pointer
+	length-bits: as int-ptr! allocate 30 * size? integer! 
 	length-base: as int-ptr! allocate 30 * size? integer!
 
 	;--extra bits and base table for distance codes
-	dist-bits: as int-ptr! allocate 30 * size? integer!  ;byte->int pointer
+	dist-bits: as int-ptr! allocate 30 * size? integer!  
 	dist-base: as int-ptr! allocate 30 * size? integer!
 
 	;--special ordring of code length  code
@@ -523,10 +523,6 @@ deflate: context [
 
 		;--decode block using decoded trees
 		inflate-block-data d d/ltree d/dtree
-		free as byte-ptr! d/ltree/trans
-		free as byte-ptr! d/ltree/table
-		free as byte-ptr! d/dtree/trans
-		free as byte-ptr! d/dtree/table
 	]
 
 	;--initialize global (static) data
@@ -539,18 +535,6 @@ deflate: context [
 		;--fix a special carse
 		length-bits/29: 0
 		length-base/29: 258
-	]
-
-	;--free the allocated block
-	free-block: func [][
-		free as byte-ptr! length-bits
-		free as byte-ptr! length-base
-		free as byte-ptr! dist-base
-		free as byte-ptr! dist-bits
-		free as byte-ptr! sltree/trans
-		free as byte-ptr! sltree/table
-		free as byte-ptr! sdtree/trans
-		free as byte-ptr! sdtree/table
 	]
 
 	;--inflate stream from source to dest
@@ -589,16 +573,22 @@ deflate: context [
 				1 [
 					;--decompress block with fixed huffman trees
 					inflate-fixed-block d
+					probe "use the fixed tree"
 				]
 				2 [
 					;--decompress block with dynamic huffman trees
 					inflata-dynamic-block d
+					probe "use the dynamic tree"
 				]
 				default [0]
 			]
 			;--if res!=ok return error
 			bfinal <> 0
 		]
+		free as byte-ptr! length-bits
+		free as byte-ptr! length-base
+		free as byte-ptr! dist-base
+		free as byte-ptr! dist-bits
 		return 0
 	]
 ] ;-- end deflate context
@@ -620,9 +610,55 @@ deflate: context [
 		]
 	]
 ]
+
+; ;--test 1 : use the dynamic tree
+; ;--compress data
+; res: declare integer!
+; src: "tomorrow,	i will try my best to steady, even though there are many difficulties  "
+; probe src
+; dst: allocate 1000000
+; dstLen: 1024
+; srcLen: declare integer!
+; srcLen: length? src
+; res: compress dst :dstLen src srcLen
+; print-line ["return :" res ]
+; j: 0
+; ;--decompress data
+; srcLen: dstLen
+; src1: dst
+; dst1: allocate 100000
+; dstLen1: 1024
+; src1: src1 + 1
+; srcLen: srcLen - 6
+; deflate/uncompress dst1 :dstLen1 src1 srcLen
+; probe as-c-string dst1
+
+; ;test 2 : use the fixed tree
+; ;--compress data
+; res: declare integer!
+; src: "t"
+; probe src
+; dst: allocate 1000000
+; dstLen: 1024
+; srcLen: declare integer!
+; srcLen: length? src
+; res: compress dst :dstLen src srcLen
+; print-line ["return :" res ]
+; j: 0
+; ;--decompress data
+; srcLen: dstLen
+; src1: dst
+; dst1: allocate 100000
+; dstLen1: 1024
+; src1: src1 + 1
+; srcLen: srcLen - 6
+; deflate/uncompress dst1 :dstLen1 src1 srcLen
+; probe as-c-string dst1
+
+;test 3: include the blank byte
 ;--compress data
 res: declare integer!
-src: "tomorrow,	i will try my best to steady, even though there are many difficulties  "
+src: "tomorrow,   	i will try my best to steady, even though      there are many difficulties  "
 probe src
 dst: allocate 1000000
 dstLen: 1024
@@ -631,20 +667,13 @@ srcLen: length? src
 res: compress dst :dstLen src srcLen
 print-line ["return :" res ]
 j: 0
-
 ;--decompress data
 srcLen: dstLen
 src1: dst
-
 dst1: allocate 100000
 dstLen1: 1024
-
 src1: src1 + 1
 srcLen: srcLen - 6
 deflate/uncompress dst1 :dstLen1 src1 srcLen
-
 probe as-c-string dst1
-
-
-
 
