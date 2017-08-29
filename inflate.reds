@@ -11,9 +11,12 @@ deflate: context [
 
 	init-TREE: func [
 		a [TREE!]
+		/local
+			buf [int-ptr!]
 	][
-		a/table: as int-ptr! allocate 16 * size? integer!
-		a/trans: as int-ptr! allocate 288 * size? integer!
+		buf: as int-ptr! allocate 304 * size? integer!
+		a/table: buf
+		a/trans: buf + 16
 	]
 
 	DATA!: alias struct! [
@@ -30,12 +33,12 @@ deflate: context [
 	sdtree: declare TREE!
 
 	;--extra bits and base tables for length codes
-	length-bits: as int-ptr! allocate 30 * size? integer! 
-	length-base: as int-ptr! allocate 30 * size? integer!
+	length-bits: as int-ptr! 0
+	length-base: as int-ptr! 0
 
 	;--extra bits and base table for distance codes
-	dist-bits: as int-ptr! allocate 30 * size? integer!  
-	dist-base: as int-ptr! allocate 30 * size? integer!
+	dist-bits: as int-ptr! 0  
+	dist-base: as int-ptr! 0
 
 	;--special ordring of code length  code
 	clcidx: [16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15]
@@ -527,6 +530,15 @@ deflate: context [
 
 	;--initialize global (static) data
 	init: func [][
+		;init the length/dist-bits/base
+		;--init bits and base tables for length codes
+		length-bits: as int-ptr! allocate 30 * size? integer! 
+		length-base: as int-ptr! allocate 30 * size? integer!
+
+		;--init bits and base table for distance codes
+		dist-bits: as int-ptr! allocate 30 * size? integer!  
+		dist-base: as int-ptr! allocate 30 * size? integer!
+
 		;--build fixed huffman trees
 		build-fixed-trees sltree sdtree
 		;--build extra bits and base tables
@@ -535,6 +547,18 @@ deflate: context [
 		;--fix a special carse
 		length-bits/29: 0
 		length-base/29: 258
+	]
+
+	;--if complete the uncompress work, call this function to free these allocated heap-bolcks 
+	free-block: func [][
+		free as byte-ptr! length-bits
+		free as byte-ptr! length-base
+		free as byte-ptr! dist-base
+		free as byte-ptr! dist-bits
+		free as byte-ptr! sltree/trans
+ 		free as byte-ptr! sltree/table
+ 		free as byte-ptr! sdtree/trans
+ 		free as byte-ptr! sdtree/table
 	]
 
 	;--inflate stream from source to dest
@@ -585,10 +609,6 @@ deflate: context [
 			;--if res!=ok return error
 			bfinal <> 0
 		]
-		free as byte-ptr! length-bits
-		free as byte-ptr! length-base
-		free as byte-ptr! dist-base
-		free as byte-ptr! dist-bits
 		return 0
 	]
 ] ;-- end deflate context
