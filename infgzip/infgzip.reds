@@ -119,8 +119,7 @@ Red/System[]
 		a: as integer!  src/b
 		crc: 256 * crc + a
 		;--decompress data
-		;a: as-integer (src + sourceLen - start - 8)
-		a: 0
+		a: as-integer (src + sourceLen - start - 8)
 		c: as integer! start/value
 		start: start - 1
 		res: deflate/uncompress dst destLen start a
@@ -128,11 +127,13 @@ Red/System[]
 			return -3
 		]
 		if (destLen/value) <> dlen [
+			probe "<>dlen"
 			return -3
 		]
 		;--check CRC32 checksum
 		c: CRC32 dst dlen
 		if crc <> c [
+			probe "crc <> c"
 			return -3
 		]
 		return 0
@@ -150,7 +151,7 @@ Red/System[]
 					overlapped	[int-ptr!]
 					return:		[integer!]
 				]
-				CreateFileA: "CreateFileA" [			;-- temporary needed by Red/System
+				CreateFileA: "CreateFileA" [		
 					filename	[c-string!]
 					access		[integer!]
 					share		[integer!]
@@ -165,7 +166,7 @@ Red/System[]
 	]
 	file: 0
 	file: CreateFileA
-			"test51.gz"
+			"test62.gz"
 			80000000h
 			0
 			null

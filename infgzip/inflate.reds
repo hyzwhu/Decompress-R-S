@@ -479,14 +479,14 @@ deflate: context [
 			a 			[integer!]
 	][
 		;--get length
-		length: as integer! d/source/2
-		length: 256 * length + (as-integer d/source/1)
+		length: as integer! d/source/3
+		length: 256 * length + (as-integer d/source/2)
 		;--get one's complement of length
-		invlength: as integer! d/source/4
-		invlength: 256 * invlength + (as-integer d/source/3)
+		invlength: as integer! d/source/5
+		invlength: 256 * invlength + (as-integer d/source/4)
 
 		;--check length
-		d/source: d/source + 4
+		d/source: d/source + 5
 		;--copy block
 		i: length
 		until [
@@ -499,7 +499,7 @@ deflate: context [
 
 		;--make sure we start next block on a byte boundary
 		d/bitcount: 0
-		d/destLen: d/destLen + length
+		d/destLen/value: d/destLen/value + length
 		0
 	]
 
