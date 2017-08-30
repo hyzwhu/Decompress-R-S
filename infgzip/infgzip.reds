@@ -19,7 +19,7 @@ Red/System[]
 			dst     [byte-ptr!]
 			start   [byte-ptr!]
 			dlen    [integer!]
-			crc   [integer!]
+			crc   	[integer!]
 			flg     [byte!]
 			xlen    [integer!]
 			hcrc    [integer!]
@@ -58,6 +58,7 @@ Red/System[]
 		start: src + 10
 		;--skip extra data if present
 		if (flga and FEXTRA) <> 0 [
+			probe "enter fextra"
 			xlen: as integer! start/2
 			b: as integer! start/1
 			xlen: xlen * 256 + b
@@ -65,21 +66,26 @@ Red/System[]
 		]
 		;--skip file comment if present
 		if (flga and FNAME) <> 0 [
-			c: as integer! start/value
-			while [c <> 0][
+			probe "fname"
+			c: 0
+			until [
+				c: as integer! start/value
 				start: start + 1
+				c = 0
 			]
-			start: start + 1
 		]
 		if (flga and FCOMMENT) <> 0 [
-		c: as integer! start/value
-			while [c <> 0][
-				start: start + 1
-			]
-			start: start + 1
+			probe "fcomment"
+			c: 0
+			until [
+					c: as integer! start/value
+					start: start + 1
+					c = 0
+				]
 		]
 		;--check header crc if present
 		if (flga and FHCRC) <> 0 [
+			probe "fhcrc"
 			hcrc: as integer! start/2
 			a: as integer! start/1
 			hcrc: 256 * hcrc + a
@@ -113,8 +119,11 @@ Red/System[]
 		a: as integer!  src/b
 		crc: 256 * crc + a
 		;--decompress data
-		a: as integer! (src + sourceLen - start - 8)
-		res: uncompress dst destLen start a
+		;a: as-integer (src + sourceLen - start - 8)
+		a: 0
+		c: as integer! start/value
+		start: start - 1
+		res: deflate/uncompress dst destLen start a
 		if res <> 0 [
 			return -3
 		]
@@ -128,4 +137,57 @@ Red/System[]
 		]
 		return 0
 	]
+
+	;--test function
+	;--read the data from the file
+	#import [
+			"kernel32.dll" stdcall [
+				ReadFile:	"ReadFile" [
+					file		[integer!]
+					buffer		[byte-ptr!]
+					bytes		[integer!]
+					read		[int-ptr!]
+					overlapped	[int-ptr!]
+					return:		[integer!]
+				]
+				CreateFileA: "CreateFileA" [			;-- temporary needed by Red/System
+					filename	[c-string!]
+					access		[integer!]
+					share		[integer!]
+					security	[int-ptr!]
+					disposition	[integer!]
+					flags		[integer!]
+					template	[int-ptr!]
+					return:		[integer!]
+				]
+			]
+			
+	]
+	file: 0
+	file: CreateFileA
+			"test51.gz"
+			80000000h
+			0
+			null
+			3
+			80h
+			null
+	buffer: as byte-ptr! allocate 1000
+	size: 0
+	read-sz: 0
+	ReadFile file buffer 1000 :read-sz null
+	;-------uncompress
+	src: as byte-ptr! allocate 1000
+	src: buffer
+	src1: declare c-string!
+	src1: as-c-string buffer
+	srcLen: read-sz
+	dst1: allocate 100000
+	dstLen1: 1024
+	res: 0
+	res: zip-uncompress dst1 :dstLen1 src srcLen
+	probe ["res="res]
+	probe as-c-string dst1
+
+
 	
