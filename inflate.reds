@@ -476,31 +476,30 @@ deflate: context [
 			i 			[integer!]
 			j			[byte-ptr!]
 			l 			[byte-ptr!]
+			a 			[integer!]
 	][
 		;--get length
-		length: as integer! d/source/2
-		length: 256 * length + d/source/1
-
+		length: as integer! d/source/3
+		length: 256 * length + (as-integer d/source/2)
 		;--get one's complement of length
-		invlength: as integer! d/source/4
-		invlength: 256 * invlength + d/source/3
+		invlength: as integer! d/source/5
+		invlength: 256 * invlength + (as-integer d/source/4)
 
 		;--check length
-		d/source: d/source + 4
-
+		d/source: d/source + 5
 		;--copy block
 		i: length
 		until [
-			j: d/dest + 1
-			l: d/source + 1
-			j: l
+			d/dest/value: d/source/value
+			d/dest: d/dest + 1
+			d/source: d/source + 1			
 			i: i - 1
 			i = 0
 		]
 
 		;--make sure we start next block on a byte boundary
 		d/bitcount: 0
-		d/destLen: d/destLen + length
+		d/destLen/value: d/destLen/value + length
 		0
 	]
 
@@ -588,11 +587,11 @@ deflate: context [
 			bfinal: getbit d
 			;--read block type (2 bits)
 			btype: read-bits d 2 0
-
 			switch btype [
 				0 [
 					;--decompress uncompressed block
 					res: inflate-uncompressed-block d
+					probe "decompress uncompressed block"
 				]
 				1 [
 					;--decompress block with fixed huffman trees
@@ -630,6 +629,29 @@ deflate: context [
 		]
 	]
 ]
+; #import [
+; 			"kernel32.dll" stdcall [
+; 				CreateFileA: "CreateFileA" [			;-- temporary needed by Red/System
+; 					filename	[c-string!]
+; 					access		[integer!]
+; 					share		[integer!]
+; 					security	[int-ptr!]
+; 					disposition	[integer!]
+; 					flags		[integer!]
+; 					template	[int-ptr!]
+; 					return:		[integer!]
+; 				]
+; 				WriteFile:	"WriteFile" [
+; 					file		[integer!]
+; 					buffer		[byte-ptr!]
+; 					bytes		[integer!]
+; 					written		[int-ptr!]
+; 					overlapped	[int-ptr!]
+; 					return:		[integer!]
+; 				]
+; 			]
+			
+; 	]
 
 ; ;--test 1 : use the dynamic tree
 ; ;--compress data
@@ -677,23 +699,39 @@ deflate: context [
 
 ;test 3: include the blank byte
 ;--compress data
-res: declare integer!
-src: "tomorrow,   	i will try my best to steady, even though      there are many difficulties  "
-probe src
-dst: allocate 1000000
-dstLen: 1024
-srcLen: declare integer!
-srcLen: length? src
-res: compress dst :dstLen src srcLen
-print-line ["return :" res ]
-j: 0
-;--decompress data
-srcLen: dstLen
-src1: dst
-dst1: allocate 100000
-dstLen1: 1024
-src1: src1 + 1
-srcLen: srcLen - 6
-deflate/uncompress dst1 :dstLen1 src1 srcLen
-probe as-c-string dst1
+; res: declare integer!
+; src: "abc123xyz123abcs"
+; probe src
+; dst: allocate 1000000
+; dstLen: 1024
+; srcLen: declare integer!
+; srcLen: length? src
+; res: compress dst :dstLen src srcLen
+; print-line ["return :" res ]
+; j: 0
+; file: 0
+; 	file: CreateFileA
+; 			"compressdata.txt"
+; 			40000000h
+; 			0
+; 			null
+; 			1
+; 			80h
+; 			null
+; 	probe ["the file's value is"file]
+; 	buffer: as byte-ptr! allocate 1000
+; 	size: 0
+; 	read-sz: 0
+; 	buffer: dst
+; 	WriteFile file buffer 50 :read-sz null
+; 	probe [as-c-string buffer]
+; ;--decompress data
+; srcLen: dstLen
+; src1: dst
+; dst1: allocate 100000
+; dstLen1: 1024
+; src1: src1 + 1
+; srcLen: srcLen - 6
+; deflate/uncompress dst1 :dstLen1 src1 srcLen
+; probe as-c-string dst1
 
